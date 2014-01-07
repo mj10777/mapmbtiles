@@ -1,0 +1,11 @@
+[Desktop Entry]
+Encoding=UTF-8
+Icon=/usr/share/mapmbtiles/icon.png
+Name=MapMbTiles
+Comment=Map Tile / MbTiles  Generator
+Exec=/usr/bin/mapmbtiles
+Terminal=false
+Type=Application
+Categories=Graphics;
+StartupNotify=false
+Name[de_DE]=mapmbtiles

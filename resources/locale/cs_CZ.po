@@ -1,0 +1,518 @@
+# Translations template for PROJECT.
+# Copyright (C) 2009 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2009.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: MapMbTiles\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2009-07-23 13:43+0200\n"
+"PO-Revision-Date: 2009-07-23 06:39-0800\n"
+"Last-Translator: Klokan Petr Pridal <klokan@klokan.cz>\n"
+"Language-Team: Launchpad Translators\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 0.9.4\n"
+
+#: mapmbtiles/config.py:34
+msgid "Supported raster files"
+msgstr "Podporované rastrové soubory"
+
+#: mapmbtiles/config.py:35
+msgid "TIFF / BigTIFF / GeoTIFF (.tif)"
+msgstr ""
+
+#: mapmbtiles/config.py:36
+msgid "BSB Nautical Chart Format (.kap)"
+msgstr ""
+
+#: mapmbtiles/config.py:37
+msgid "JPEG2000 - JPEG 2000 (.jp2, .j2k)"
+msgstr ""
+
+#: mapmbtiles/config.py:38
+msgid "MrSID - Multi-resolution Seamless Image Database (.sid)"
+msgstr ""
+
+#: mapmbtiles/config.py:39
+msgid "ECW - ERMapper Compressed Wavelets (.ecw)"
+msgstr ""
+
+#: mapmbtiles/config.py:40
+msgid "HFA - Erdas Imagine Images (.img)"
+msgstr ""
+
+#: mapmbtiles/config.py:41
+msgid "NITF - National Imagery Transmission Format (.nitf)"
+msgstr ""
+
+#: mapmbtiles/config.py:42
+msgid "NDF - NLAPS Data Format (.h1,.h2,.hd)"
+msgstr ""
+
+#: mapmbtiles/config.py:43
+msgid "MFF - Vexcel MFF Raster (.hdr)"
+msgstr ""
+
+#: mapmbtiles/config.py:44
+msgid "INGR - Intergraph Raster Format (.cit,.rgb,..)"
+msgstr ""
+
+#: mapmbtiles/config.py:45
+msgid "EIR -- Erdas Imagine Raw (.raw)"
+msgstr ""
+
+#: mapmbtiles/config.py:46
+msgid "BLX -- Magellan BLX Topo File Format (.blx)"
+msgstr ""
+
+#: mapmbtiles/config.py:47
+msgid "JPEG - Joint Photographic Experts Group JFIF (.jpg)"
+msgstr ""
+
+#: mapmbtiles/config.py:48
+msgid "PNG - Portable Network Graphics (.png)"
+msgstr ""
+
+#: mapmbtiles/config.py:49
+msgid "GIF - Graphics Interchange Format (.gif)"
+msgstr ""
+
+#: mapmbtiles/config.py:50
+msgid "BMP - Microsoft Windows Device Independent Bitmap (.bmp)"
+msgstr ""
+
+#: mapmbtiles/config.py:51
+msgid "WMS - GDAL driver for OGC Web Map Server (.wms)"
+msgstr ""
+
+#: mapmbtiles/config.py:52
+msgid "VRT - GDAL Virtual Raster (.vrt)"
+msgstr ""
+
+#: mapmbtiles/config.py:53
+msgid "All files (*.*)"
+msgstr "Všechny soubory (*.*)"
+
+#: mapmbtiles/config.py:66
+msgid "Custom definition of the system (WKT, Proj.4,..)"
+msgstr "Vlastní definice systému souřadnic (WKT, Proj.4,...)"
+
+#: mapmbtiles/config.py:67
+msgid "WGS84 - Latitude and longitude (geodetic)"
+msgstr "WGS84 - Rovnoběžky a poledníky (zeměpisné souřadnice)"
+
+#: mapmbtiles/config.py:68
+msgid "Universal Transverse Mercator - UTM (projected)"
+msgstr "Univerzální Mercatorovo zobrazení - UTM (rovinné souřadnice)"
+
+#: mapmbtiles/config.py:69
+msgid "Specify the id-number from the EPSG/ESRI database"
+msgstr "Zadejte identifikační číslo z databáze EPSG/ESRI"
+
+#: mapmbtiles/config.py:70
+msgid "Search the coordinate system by name"
+msgstr "Hledat systém souřadnic dle názvu"
+
+#: mapmbtiles/config.py:74
+msgid "SRSCustom0"
+msgstr ""
+
+#: mapmbtiles/config.py:74
+msgid "SRSDefinition0"
+msgstr ""
+
+#: mapmbtiles/config.py:75
+msgid "SRSCustom1"
+msgstr ""
+
+#: mapmbtiles/config.py:75
+msgid "SRSDefinition1"
+msgstr ""
+
+#: mapmbtiles/config.py:76
+msgid "SRSCustom2"
+msgstr ""
+
+#: mapmbtiles/config.py:76
+msgid "SRSDefinition2"
+msgstr ""
+
+#: mapmbtiles/config.py:77
+msgid "SRSCustom3"
+msgstr ""
+
+#: mapmbtiles/config.py:77
+msgid "SRSDefinition3"
+msgstr ""
+
+#: mapmbtiles/config.py:78
+msgid "SRSCustom4"
+msgstr ""
+
+#: mapmbtiles/config.py:78
+msgid "SRSDefinition4"
+msgstr ""
+
+#: mapmbtiles/config.py:79
+msgid "SRSCustom5"
+msgstr ""
+
+#: mapmbtiles/config.py:79
+msgid "SRSDefinition5"
+msgstr ""
+
+#: mapmbtiles/config.py:80
+msgid "SRSCustom6"
+msgstr ""
+
+#: mapmbtiles/config.py:80
+msgid "SRSDefinition6"
+msgstr ""
+
+#: mapmbtiles/config.py:81
+msgid "SRSCustom7"
+msgstr ""
+
+#: mapmbtiles/config.py:81
+msgid "SRSDefinition7"
+msgstr ""
+
+#: mapmbtiles/config.py:82
+msgid "SRSCustom8"
+msgstr ""
+
+#: mapmbtiles/config.py:82
+msgid "SRSDefinition8"
+msgstr ""
+
+#: mapmbtiles/config.py:83
+msgid "SRSCustom9"
+msgstr ""
+
+#: mapmbtiles/config.py:83
+msgid "SRSDefinition9"
+msgstr ""
+
+#: mapmbtiles/main.py:51
+msgid "Insert &raster map files"
+msgstr ""
+
+#: mapmbtiles/main.py:55
+msgid "&Exit"
+msgstr ""
+
+#: mapmbtiles/main.py:57
+#, fuzzy
+msgid "&File"
+msgstr "&Soubor"
+
+#: mapmbtiles/main.py:60
+msgid "Online &Help && FAQ"
+msgstr "&Nápověda a FAQ online"
+
+#: mapmbtiles/main.py:62
+msgid "MapMbTiles user &group"
+msgstr "Uživatelská &skupina MapMbTiles"
+
+#: mapmbtiles/main.py:64
+msgid "Project &website"
+msgstr "&Webové stránky projektu "
+
+#: mapmbtiles/main.py:66
+#, fuzzy
+msgid "&About"
+msgstr "&O programu"
+
+#: mapmbtiles/main.py:68
+#, fuzzy
+msgid "&Help"
+msgstr "&Nápověda"
+
+#: mapmbtiles/main.py:82
+msgid "Tile Profile"
+msgstr ""
+
+#: mapmbtiles/main.py:83
+msgid "Source Data Files"
+msgstr "Vstupní datové soubory"
+
+#: mapmbtiles/main.py:84
+msgid "Spatial Reference"
+msgstr "Prostorové umístění"
+
+#: mapmbtiles/main.py:85
+msgid "Tile Details"
+msgstr "Detaily k dlaždicím"
+
+#: mapmbtiles/main.py:86
+msgid "Destination"
+msgstr ""
+
+#: mapmbtiles/main.py:87
+msgid "Viewers"
+msgstr ""
+
+#: mapmbtiles/main.py:88
+msgid "Viewer Details"
+msgstr "Detaily k prohlížečkám"
+
+#: mapmbtiles/main.py:89
+msgid "Rendering"
+msgstr ""
+
+#: mapmbtiles/main.py:91
+#: mapmbtiles/main.py:113
+msgid "MapMbTiles - MbTiles / Tile Generator"
+msgstr ""
+
+#: mapmbtiles/main.py:93
+msgid "https://github.com/mj10777/mapmbtiles"
+msgstr ""
+
+#: mapmbtiles/main.py:94
+msgid "(C) 2014 - Mark Johnson"
+msgstr ""
+
+#: mapmbtiles/main.py:96
+#: mapmbtiles/main.py:235
+#: mapmbtiles/main.py:242
+#: mapmbtiles/main.py:245
+#: mapmbtiles/main.py:247
+msgid "Go &Back"
+msgstr "&Zpět"
+
+#: mapmbtiles/main.py:98
+#: mapmbtiles/main.py:234
+msgid "&Continue"
+msgstr "&Pokračovat"
+
+#: mapmbtiles/main.py:170
+msgid "MapMbTiles"
+msgstr ""
+
+#: mapmbtiles/main.py:173
+msgid ""
+"MapMbTiles is a powerful tool for online map publishing and generation of raster overlay mashups.\n"
+"Your geodata are transformed to the tiles compatible with Google Maps and Earth - ready for uploading to your webserver."
+msgstr ""
+
+#: mapmbtiles/main.py:184
+msgid "http://www.mapmbtiles.org"
+msgstr ""
+
+#: mapmbtiles/main.py:187
+msgid "http://groups.google.com/group/mapmbtiles"
+msgstr ""
+
+#: mapmbtiles/main.py:190
+msgid "http://help.mapmbtiles.org"
+msgstr ""
+
+#: mapmbtiles/main.py:194
+#: mapmbtiles/widgets.py:137
+msgid "Choose a file"
+msgstr "Zvolte soubor"
+
+#: mapmbtiles/main.py:214
+msgid "This would be an preferences Dialog\n"
+msgstr ""
+
+#: mapmbtiles/main.py:215
+msgid "If there were any preferences to set.\n"
+msgstr ""
+
+#: mapmbtiles/main.py:216
+#, fuzzy
+msgid "Preferences"
+msgstr "Konfigurace"
+
+#: mapmbtiles/main.py:238
+#: mapmbtiles/main.py:244
+msgid "&Render"
+msgstr ""
+
+#: mapmbtiles/main.py:239
+msgid "&Stop"
+msgstr ""
+
+#: mapmbtiles/main.py:241
+msgid "&Resume"
+msgstr ""
+
+#: mapmbtiles/main.py:248
+msgid "Exit"
+msgstr ""
+
+#: mapmbtiles/main.py:279
+msgid "You have to add some files for rendering"
+msgstr ""
+
+#: mapmbtiles/main.py:279
+msgid "No files specified"
+msgstr "Nebyl vybrán žádný soubor"
+
+#: mapmbtiles/main.py:282
+msgid ""
+"Sorry the file you have specified does not have georeference.\n"
+"\n"
+"Click on the 'Georeference' button and give a bounding box or \n"
+"create a world file (.wld) for the specified file."
+msgstr ""
+
+#: mapmbtiles/main.py:282
+msgid "Missing georeference"
+msgstr "Chybí georeference"
+
+#: mapmbtiles/main.py:294
+#: mapmbtiles/widgets.py:398
+#: mapmbtiles/widgets.py:421
+msgid "The SRS definition is not correct"
+msgstr ""
+
+#: mapmbtiles/main.py:298
+msgid ""
+"You have to specify reference system of your coordinates.\n"
+"\n"
+"TIP: for latitude/longitude in WGS84 you should type 'EPSG:4326'"
+msgstr ""
+
+#: mapmbtiles/main.py:298
+msgid "Not valid spatial reference system"
+msgstr ""
+
+#: mapmbtiles/main.py:315
+#: mapmbtiles/widgets.py:120
+msgid "Unfortunately the merging of files is not yet implemented in the MapMbTiles GUI. Only the first file in the list is going to be rendered."
+msgstr ""
+
+#: mapmbtiles/main.py:315
+#: mapmbtiles/widgets.py:120
+msgid "Not yet implemented :-("
+msgstr "Není zatím naprogramováno :-( "
+
+#: mapmbtiles/main.py:329
+msgid "Rendering stopped !!!!"
+msgstr ""
+
+#: mapmbtiles/main.py:334
+msgid "Started..."
+msgstr ""
+
+#: mapmbtiles/main.py:397
+msgid "Opening the input files"
+msgstr "Výběr vstupních souborů"
+
+#: mapmbtiles/main.py:402
+msgid "Generating viewers and metadata"
+msgstr ""
+
+#: mapmbtiles/main.py:407
+msgid "Rendering the base tiles"
+msgstr ""
+
+#: mapmbtiles/main.py:412
+msgid "Rendering the overview tiles in the pyramid"
+msgstr ""
+
+#: mapmbtiles/main.py:426
+msgid "Task is finished!"
+msgstr "Úloha je dokončena!"
+
+#: mapmbtiles/widgets.py:36
+msgid "Error opening file\n"
+msgstr "Chyba při otevírání souboru\n"
+
+#: mapmbtiles/widgets.py:39
+msgid "Cannot open non ascii files\n"
+msgstr ""
+
+#: mapmbtiles/widgets.py:47
+msgid "Filename"
+msgstr "Název souboru"
+
+#: mapmbtiles/widgets.py:48
+#: mapmbtiles/widgets.py:101
+msgid "Georeference"
+msgstr ""
+
+#: mapmbtiles/widgets.py:169
+#, python-format
+msgid ""
+"Please specify bounding box for '%s' as 4 numbers\n"
+"Format: 'north south east west'\n"
+"\n"
+"Alternatively you can create a world file (.wld) or (.tab) by an external GIS software"
+msgstr ""
+
+#: mapmbtiles/widgets.py:170
+msgid "Georeference with bounding box"
+msgstr ""
+
+#: mapmbtiles/widgets.py:210
+msgid "Set transparency for a color (NODATA):"
+msgstr ""
+
+#: mapmbtiles/widgets.py:288
+msgid "EPSG Registry"
+msgstr ""
+
+#: mapmbtiles/widgets.py:297
+msgid "Paste here the \"OGC WKT\" or \"Proj4\" definition or the URL:"
+msgstr ""
+
+#: mapmbtiles/widgets.py:304
+msgid "UTM Zone:"
+msgstr "UTM zóna:"
+
+#: mapmbtiles/widgets.py:314
+msgid "Set"
+msgstr "Nastav"
+
+#: mapmbtiles/widgets.py:320
+msgid "Preview the map reference with this SRS"
+msgstr ""
+
+#: mapmbtiles/widgets.py:387
+#, python-format
+msgid "%s / UTM Zone %s%s"
+msgstr "%s / UTM zóna %s%s"
+
+#: mapmbtiles/widgets.py:449
+msgid "Click on the 'Render' button to start the rendering..."
+msgstr ""
+
+#: mapmbtiles/wizard.py:59
+msgid "GDAL2MbTiles initialization failed"
+msgstr "Načtení GDAL2MbTiles selhalo"
+
+#: mapmbtiles/wizard.py:155
+msgid "Nothing to update - progressbar not displayed"
+msgstr ""
+
+#: mapmbtiles/wizard.py:163
+msgid "Nothing to update - progresstext not displayed"
+msgstr ""
+
+#: mapmbtiles/wizard.py:171
+msgid "Selection of the tile profile"
+msgstr "Výběr typu dlaždic"
+
+#: mapmbtiles/wizard.py:172
+msgid "MapMbTiles generates tiles for simple online publishing of maps. It offers several tile profiles - several approaches how to cut a map into small tiles."
+msgstr "MapMbTiles generuje dlaždice pro jednoduché publikovaní map. Podporuje několik typů dlaždic - několik způsobů jak rozřezat mapu na dlaždice."
+
+#: mapmbtiles/wizard.py:174
+msgid "What kind of tiles would you like to generate?"
+msgstr "Jaký druh dlaždic chcete generovat?"
+
+#: mapmbtiles/wizard.py:178
+msgid "Global Spherical Mercator (tiles a la Google Maps)"
+msgstr "Global Spherical Mercator (dlaždice a la Google Maps)"
+
+#: mapmbtiles/wxgdal2mbtiles.py:25
+msgid "Rendering Error"
+msgstr "Chyba při vykreslování"
+

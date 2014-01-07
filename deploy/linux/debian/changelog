@@ -1,0 +1,8 @@
+mapmbtiles ($VERSION) unstable; urgency=low
+
+  * Release.
+
+    This is a debianized version of MapMbTiles from github.
+    https://github.com/mj10777/mapmbtiles
+
+ -- Mark Johnson (mj10777) <mj10777@googlemail.com>  $DATE
