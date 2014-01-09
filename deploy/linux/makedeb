@@ -34,9 +34,12 @@ sed -i -e "s/\\\$VERSION/$VERSION/g" -e "s/\\\$DATE/$CURDATE/g" \
 
 # build the .deb
 (cd "$SANDBOX/$ARCHNAME"; dpkg-buildpackage -d)
+exit_rc=$?
 
 # copy it
 cp "$SANDBOX"/*.deb .
 
 # clean up
 rm -rf "$SANDBOX"
+
+exit ${exit_rc}

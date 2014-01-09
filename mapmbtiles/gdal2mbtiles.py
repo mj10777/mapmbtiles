@@ -1073,11 +1073,11 @@ gdal2mbtiles temp.vrt""" % self.input )
     self.mbtiles_dir=os.path.dirname(self.input)+ '/'
     self.mbtiles_file=self.mbtiles_dir+os.path.splitext(os.path.basename( self.input ))[0] + '.mbtiles'
    if i_parm == 10:
-    self.mbtiles_dir=os.path.dirname(self.output)+ '/'
     self.mbtiles_file=self.output
+    self.mbtiles_dir=os.path.dirname(self.mbtiles_file)+ '/'
    if i_parm == 11:
-    self.mbtiles_dir=os.path.dirname(self.input)+ '/'
     self.mbtiles_file=self.input
+    self.mbtiles_dir=os.path.dirname(self.mbtiles_file)+ '/'
    self.mbtiles_db=MbTiles()
    # if self.options.verbose:
    self.mbtiles_db.open_db(self.mbtiles_file.strip(),self.mbtiles_dir,self.mbtiles_format,self.s_y_type,self.options.verbose)
