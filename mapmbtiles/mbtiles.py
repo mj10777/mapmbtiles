@@ -52,6 +52,8 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+import urllib2
+from urlparse import urlparse
 from gettext import gettext as _
 
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
@@ -74,7 +76,7 @@ except:
 
 
 """ Default tiles URL """
-DEFAULT_TILES_URL = "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+DEFAULT_TILES_URL = "http://{s}.tile.openstreetmap.org/{z}/{x}/{y_osm}.png"
 """ Default tiles subdomains """
 DEFAULT_TILES_SUBDOMAINS = list("abc")
 """ Base temporary folder """
@@ -103,8 +105,6 @@ logger = logging.getLogger(__name__)
 class MbTiles(object):
  def __init__(self):
   self.verbose=False
-  self.s_y_type="tms"
-  tms_osm=False
   self.tilesize=256
   self.bounds_west=-180.0
   self.bounds_east=180.0
@@ -120,6 +120,7 @@ class MbTiles(object):
   self.s_y_type = 'tms'
   self.tms_osm=False
   self.mbtiles_format='jpg'
+  self.pil_format='JPEG'
   self.mbtiles_minzoom='0'
   self.mbtiles_maxzoom='22'
   self.mbtiles_bounds="%f,%f,%f,%f"% (self.bounds_west,self.bounds_south,self.bounds_east,self.bounds_north)
@@ -135,7 +136,9 @@ class MbTiles(object):
   if s_y_type == "osm":
    self.s_y_type=s_y_type
    self.tms_osm=True
-  self.mbtiles_format=mbtiles_format
+  if mbtiles_format == "png":
+   self.mbtiles_format=mbtiles_format
+   self.pil_format='PNG'
   self.verbose=verbose
   # self.verbose=True
   # setting a default value
@@ -148,16 +151,16 @@ class MbTiles(object):
   # self.optimize_connection()
   if not db_create:
    if self.verbose:
-    print "MbTiles[",db_create,"] : creating [",self.s_path_db,"] "
+    logger.info(_("MbTiles[%s] : [open_db] : creating: [%s]") % db_create,self.s_path_db)
    self.mbtiles_create()
   else:
    if self.verbose:
-    print "MbTiles[",db_create,"] : opening [",self.s_path_db,"] "
+    logger.info(_("MbTiles[%s] : [open_db] : opening: [%s]") % db_create,self.s_path_db)
    self.fetch_metadata()
 
  def close_db(self):
   if self.verbose:
-   print "MbTiles[close_db] : closing [",self.s_path_db,"] "
+   logger.info(_("MbTiles : [close_db] : closing: [%s]") % self.s_path_db)
   if self.mbtiles_cursor:
    self.mbtiles_cursor.close()
   if self.sqlite3_connection:
@@ -193,7 +196,7 @@ class MbTiles(object):
    con = sqlite3.connect(mbtiles_file)
    return con
   except Exception, e:
-   logger.error("Could not connect to database")
+   logger.error(_("MbTiles : Could not connect to database: Error %s:") % e.args[0])
    logger.exception(e)
    sys.exit(1)
 
@@ -234,24 +237,25 @@ class MbTiles(object):
 
  def optimize_database(self):
   if self.verbose:
-   print "MbTiles : ioptimize_database: analyzing db"
+   logger.info(_("MbTiles : optimize_database: analyzing db [%s]") % "ANALYZE;")
   self.mbtiles_cursor.execute("""ANALYZE;""")
   if self.verbose:
-   print "MbTiles : optimize_database: cleaning db"
+   logger.info(_("MbTiles : optimize_database: cleaning db [%s]") % "VACUUM;")
   self.mbtiles_cursor.execute("""VACUUM;""")
   if self.verbose:
-   print "MbTiles : optimize_database: [",self.s_path_db,"]"
+   logger.info(_("MbTiles : optimize_database: [%s]") % self.s_path_db)
 
  def insert_metadata(self,metadata_list):
   if metadata_list:
    if self.verbose:
-    print "MbTiles : insert_metadata:",metadata_list
+    # logger.info(_("MbTiles : insert_metadata:: [%s]") % metadata_list)
+    pass
    try:
     self.mbtiles_cursor.executemany("INSERT OR REPLACE INTO metadata VALUES(?,?)",metadata_list)
     self.sqlite3_connection.commit()
    except sqlite3.Error, e:
     self.sqlite3_connection.rollback()
-    print "MbTiles : insert_metadata: Error %s:" % e.args[0]
+    logger.error(_("MbTiles : insert_metadata: Error %s:") % e.args[0])
    self.fetch_metadata()
 
  def save_metadata(self):
@@ -277,25 +281,43 @@ class MbTiles(object):
   if not self.mbtiles_cursor:
    self.mbtiles_cursor = self.sqlite3_connection.cursor()
   s_tile_id="{0}-{1}-{2}.{3}".format(str(tz), str(tx),str(ty),self.s_y_type)
-  s_tile_id=self.check_image(s_tile_id,image_data)
+  s_tile_id,output_image=self.check_image(s_tile_id,image_data)
+  if output_image:
+   image_data=output_image
   sql_insert_map="INSERT OR REPLACE INTO map (tile_id,zoom_level,tile_column,tile_row,grid_id) VALUES(?,?,?,?,?);";
   map_values = [(s_tile_id,tz,tx,ty,'')]
   sql_insert_image="INSERT OR REPLACE INTO images (tile_id,tile_data) VALUES(?,?);"
   image_values = [(s_tile_id,buffer(image_data))]
   # sqlite3.Binary(image_data)
   if self.verbose:
-   print "MbTiles : insert_image: ",tz,tx,ty," id[",s_tile_id,"]"
+   logger.info(_("MbTiles : insert_image: %d,%d,%d id[%s]") % tz,tx,ty,s_tile_id)
   try:
    self.mbtiles_cursor.executemany(sql_insert_map,map_values)
    self.mbtiles_cursor.executemany(sql_insert_image,image_values)
    self.sqlite3_connection.commit()
   except sqlite3.Error, e:
    self.sqlite3_connection.rollback()
-   print "MbTiles : insert_image: Error %s:" % e.args[0]
+   logger.error(_("MbTiles : insert_image: Error %s:") % e.args[0])
 
  def check_image(self,s_tile_id,image_data):
   # a list of (count, color) tuples or None, max amount [we only want information about a blank image]
-  colors = Image.open(BytesIO(image_data)).getcolors(1)
+  output_data=None
+  input_image = Image.open(BytesIO(image_data))
+  colors = input_image.getcolors(1)
+  if self.pil_format != input_image.format:
+   if self.pil_format == "JPEG":
+    if input_image.mode != "RGB":
+     input_image=input_image.convert('RGB')
+    # http://effbot.org/imagingbook/pil-index.htm#appendixes
+    input_image.save(s_tile_id, format="JPEG", quality=75, optimize=True, progressive=False)
+   else:
+    input_image.save(s_tile_id, format="PNG",optimize=True)
+   f = open(s_tile_id,'rb')
+   output_data = f.read()
+   f.close()
+   os.remove(s_tile_id)
+   input_image = Image.open(BytesIO(output_data))
+   colors = input_image.getcolors(1)
    # TypeError: 'buffer' does not have the buffer interface
   if colors:
    # MbTiles : check_image: tile_id[ 18-140789-176144.tms ] colors[ [(65536, (255, 255, 255, 255))] ]
@@ -310,10 +332,9 @@ class MbTiles(object):
    s_tile_orig = s_tile_id
    # exception because of hex, avoid this type of formatting - use .format(..)
    s_tile_id = "%2x-%2x-%2x.rgb"%(int(r_value),int(g_value),int(b_value))
-   # print "MbTiles : check_image: tile_id[",s_tile_orig,";",s_tile_id,"] colors[",colors,"] color_values[",color_values,"] rgb_values[",rgb_values,"] r[",r_value,"] g[",g_value,"] b[",b_value,"]"
    # MbTiles : check_image: [(65536, (255, 255, 255))] 18-140785-176149.tms
    # colors = len(filter(None,image_img.histogram()))
-  return s_tile_id
+  return s_tile_id,output_data
 
  def retrieve_blank_image(self,r,g,b):
   s_tile_id="{0}-{1}-{2}.{3}".format(str(r), str(g),str(b),"rgb")
@@ -355,7 +376,7 @@ class MbTiles(object):
    i_y_min = int(bounds_minmax[1])
    i_x_max = int(bounds_minmax[2])
    i_y_max = int(bounds_minmax[3])
-   # print "MbTiles : retrieve_bounds: i_zoom %d min(%d,%d) ; max(%d,%d)" % (i_zoom,i_x_min,i_y_min,i_x_max,i_y_max)
+   # logger.info(_("MbTiles : retrieve_bounds: i_zoom %d min(%d,%d) ; max(%d,%d)")% (i_zoom,i_x_min,i_y_min,i_x_max,i_y_max))
    tile_bounds= mercator.TileLatLonBounds(i_x_min,i_y_min,i_zoom)
    if tile_bounds[0] < bounds_south:
     bounds_south=tile_bounds[0]
@@ -404,14 +425,14 @@ class MbTiles(object):
     self.mbtiles_cursor.execute("SELECT tile_data FROM images WHERE tile_id = ?",tile_id)
     image_data = self.mbtiles_cursor.fetchone()
     if self.verbose:
-     print "MbTiles : retrieve_zoom_images: source[",s_tile_source,"] : fetching[",s_tile_id,"] "
+     logger.info(_("MbTiles : retrieve_zoom_images: source[%s] : fetching[%s]") % s_tile_source,s_tile_id)
     if image_data is None:
      # 1 / 8051 /media/gb_1500/maps/geo_tiff/rd_Berlin_Schmettau/18-140798-176204.jpg
      # [19-281597-352408.jpg] istilie_id '0-0-0.rgb'
      s_tile_id_orig=s_tile_id
      s_tile_id=self.count_tiles(tz,x,y,10)
      if self.verbose:
-      print "MbTiles : retrieve_zoom_images: fetching[",s_tile_id_orig,"] failed ; may be a rgb-image ; attempting [",s_tile_id,"]"
+      logger.info(_("MbTiles : retrieve_zoom_images: fetching[%s] failed ; may be a rgb-image ; attempting [%s]") % s_tile_id_orig,s_tile_id)
      tile_id = (s_tile_id,)
      self.mbtiles_cursor.execute("SELECT tile_data FROM images WHERE tile_id = ?",tile_id)
      image_data = self.mbtiles_cursor.fetchone()
@@ -468,8 +489,10 @@ class MbTiles(object):
 
  def mbtiles_from_disk(self,directory_path):
   if not os.path.exists(directory_path):
-   print "MbTiles : mbtiles_from_disk: directory does not exist : [",directory_path,"] "
-  print "MbTiles : mbtiles_from_disk: fetching[",directory_path,"] "
+   logger.error(_("MbTiles : mbtiles_from_disk: directory does not exist : [%s] ") % directory_path)
+   return
+  if self.verbose:
+   logger.info(_("MbTiles : mbtiles_from_disk: fetching[%s] ") % directory_path)
   image_format = ""
   min_zoom=22
   max_zoom=0
@@ -525,10 +548,11 @@ class MbTiles(object):
    f.write(s_xml)
    f.close()
   if self.verbose:
-   print "MbTiles : mbtiles_from_disk: [",self.s_path_db,"] - Habe fertig"
+   logger.info(_("MbTiles : mbtiles_from_disk: [%s] - Habe fertig") % self.s_path_db)
 
  def mbtiles_to_disk(self,directory_path):
-  print "MbTiles : mbtiles_to_disk: reading [",self.s_path_db,"]]"
+  if self.verbose:
+   logger.info(_("MbTiles : mbtiles_to_disk: reading [%s]]") % self.s_path_db)
   if not os.path.exists(directory_path):
    os.mkdir("%s" % directory_path)
   count = self.mbtiles_cursor.execute('SELECT count(zoom_level) FROM tiles;').fetchone()[0]
@@ -551,7 +575,7 @@ class MbTiles(object):
   f.write(s_xml)
   f.close()
   if self.verbose:
-   print "MbTiles : mbtiles_to_disk: created directory[",directory_path,"] with ",count," tiles - Habe fertig"
+   logger.info(_("MbTiles : mbtiles_to_disk: created directory[%s] with %d tiles - Habe fertig") % directory_path,count)
 
  # -------------------------------------------------------------------------
  # http://docs.python.org/2/library/xml.etree.elementtree.html
@@ -643,6 +667,72 @@ class MbTiles(object):
        self.mbtiles_center="%f,%f,%s"%(mbtiles_center_x,mbtiles_center_y,min_zoom)
 
  # -------------------------------------------------------------------------
+ # from Landez project
+ # https://github.com/makinacorpus/landez
+ def zoomlevels(self):
+  rows = self.mbtiles_cursor.execute('SELECT DISTINCT(zoom_level) FROM tiles ORDER BY zoom_level')
+  return [int(row[0]) for row in rows]
+
+ # -------------------------------------------------------------------------
+ # from Landez project
+ # https://github.com/makinacorpus/landez
+ def metadata(self,i_parm=0):
+  rows = self.mbtiles_cursor.execute('SELECT name, value FROM metadata ORDER BY name  COLLATE NOCASE ASC')
+  rows = [(row[0], row[1]) for row in rows]
+  if i_parm == 1:
+   return rows
+  return dict(rows)
+
+ # -------------------------------------------------------------------------
+ # from Landez project
+ # https://github.com/makinacorpus/landez
+ def find_coverage(self, zoom):
+  """
+  Returns the bounding box (minx, miny, maxx, maxy) of an adjacent
+  group of tiles at this zoom level.
+  """
+  # Find a group of adjacent available tiles at this zoom level
+  rows = self.mbtiles_cursor.execute('''SELECT tile_column, tile_row FROM tiles  WHERE zoom_level=? ORDER BY tile_column, tile_row;''', (zoom,))
+  tile = rows.fetchone()
+  xmin, ymin = tile
+  tile_prev = tile
+  while tile and tile[0] - tile_prev[0] <= 1:
+   # adjacent, go on
+   tile_prev = tile
+   tile = rows.fetchone()
+   xmax, ymax = tile_prev
+   # Transform (xmin, ymin) (xmax, ymax) to pixels
+   tile_size = self.tilesize
+   bottomleft = (xmin * tile_size, (ymax + 1) * tile_size)
+   topright = ((xmax + 1) * tile_size, ymin * tile_size)
+   # Convert center to (lon, lat)
+   mercator = GlobalMercator(self.tms_osm,tile_size,[zoom])
+  return mercator.unproject_pixels(bottomleft, zoom) + mercator.unproject_pixels(topright, zoom)
+
+ # -------------------------------------------------------------------------
+ # from Landez project
+ # https://github.com/makinacorpus/landez
+ def grid(self, z, x, y, callback=None):
+  y_mercator = (2**int(z) - 1) - int(y)
+  rows = self.mbtiles_cursor.execute('''SELECT grid FROM grids WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
+  grid = rows.fetchone()
+  if not grid:
+   raise ExtractionError(_("Could not extract grid %s from %s") % ((z, x, y),self.s_path_db))
+  grid_json = json.loads(zlib.decompress(grid[0]))
+  rows = self.mbtiles_cursor.execute('''SELECT key_name, key_json FROM grid_data  WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
+  # join up with the grid 'data' which is in pieces when stored in mbtiles file
+  grid_json['data'] = {}
+  grid_data = rows.fetchone()
+  while grid_data:
+   grid_json['data'][grid_data[0]] = json.loads(grid_data[1])
+   grid_data = rows.fetchone()
+   serialized = json.dumps(grid_json)
+   if callback is not None:
+    return '%s(%s);' % (callback, serialized)
+  return serialized
+
+ # -------------------------------------------------------------------------
+ # from gdal2tiles project
  def mbtiles_create_tilemapresource(self):
   """
      Template for tilemapresource.xml. Returns filled string. Expected variables:
@@ -712,6 +802,68 @@ class ExtractionError(Exception):
 class InvalidFormatError(Exception):
  """ Raised when reading of MBTiles content has failed """
  pass
+# from Landez project
+# https://github.com/makinacorpus/landez
+class TileSource(object):
+ def __init__(self, tilesize=None):
+  if tilesize is None:
+   tilesize = 256
+  self.tilesize = tilesize
+  self.basename = ''
+  self.metadata_input=None
+  self.tms_osm=False
+  self.s_y_type = 'tms'
+  self.mbtiles_format='jpg'
+  self.mbtiles_verbose=False
+  self.mbtiles_bounds="-180.00000,-85.05113,180.00000,85.05113"
+  self.mbtiles_minzoom="0"
+  self.mbtiles_maxzoom="22"
+
+  def tile(self, z, x, y):
+   raise NotImplementedError
+
+  def metadata(self):
+   return dict()
+
+# from Landez project
+# https://github.com/makinacorpus/landez
+class MBTilesReader(TileSource):
+ def __init__(self, mbtiles_input, tilesize=None):
+  super(MBTilesReader, self).__init__(tilesize)
+  self.mbtiles_input = mbtiles_input.strip()
+  self.basename = os.path.basename(self.mbtiles_input)
+  self.mbtiles_input_dir=os.path.dirname(self.mbtiles_input)+ '/'
+  self.mbtiles_db_input=MbTiles()
+  self.mbtiles_db_input.open_db(self.mbtiles_input,self.mbtiles_input_dir,self.mbtiles_format,self.s_y_type,self.mbtiles_verbose)
+  self.metadata_input=self.mbtiles_db_input.fetch_metadata()
+  self.tms_osm=self.mbtiles_db_input.tms_osm
+  self.mbtiles_format=self.mbtiles_db_input.mbtiles_format
+  self.s_y_type=self.mbtiles_db_input.s_y_type
+  self.mbtiles_bounds=self.mbtiles_db_input.mbtiles_bounds
+  self.mbtiles_minzoom=self.mbtiles_db_input.mbtiles_minzoom
+  self.mbtiles_maxzoom=self.mbtiles_db_input.mbtiles_maxzoom
+
+ def metadata(self,i_parm=0):
+  return self.mbtiles_db_input.metadata(i_parm)
+
+ def zoomlevels(self):
+  return self.mbtiles_db_input.zoomlevels()
+
+ def tile(self, z, x, y):
+  logger.debug(_("MBTilesReader.Extract tile %s") % ((z, x, y),))
+  # y_mercator = (2**int(z) - 1) - int(y)
+  return self.mbtiles_db_input.retrieve_image(z,x,y)
+
+ def grid(self, z, x, y, callback=None):
+  return self.mbtiles_db_input.grid(z,x,y, callback)
+
+ def find_coverage(self, zoom):
+  """
+  Returns the bounding box (minx, miny, maxx, maxy) of an adjacent
+  group of tiles at this zoom level.
+  """
+  # Find a group of adjacent available tiles at this zoom level
+  return self.mbtiles_db_input.find_coverage(zoom)
 
 # from Landez project
 # https://github.com/makinacorpus/landez
@@ -826,7 +978,8 @@ class TilesManager(object):
   """
   output = self.cache.read((z, x, y))
   if output is None:
-   print "TilesManager.tile calling sources.tile"
+   # logger.info(_("TilesManager.tile calling sources.tile: ") )
+   pass
   output = self.reader.tile(z, x, y)
   if output is None:
    return None
@@ -887,109 +1040,6 @@ class TilesManager(object):
 
 # from Landez project
 # https://github.com/makinacorpus/landez
-class TileSource(object):
- def __init__(self, tilesize=None):
-  if tilesize is None:
-   tilesize = 256
-  self.tilesize = tilesize
-  self.basename = ''
-
-  def tile(self, z, x, y):
-   raise NotImplementedError
-
-  def metadata(self):
-   return dict()
-
-# from Landez project
-# https://github.com/makinacorpus/landez
-class MBTilesReader(TileSource):
- def __init__(self, mbtiles_input, tilesize=None):
-  super(MBTilesReader, self).__init__(tilesize)
-  self.mbtiles_input = mbtiles_input.strip()
-  self.basename = os.path.basename(self.mbtiles_input)
-  self._con = None
-  self._cur = None
-
- def _query(self, sql, *args):
-  """ Executes the specified `sql` query and returns the cursor """
-  if not self._con:
-   logger.debug(_("MBTilesReader.Open MBTiles file '%s'") % self.mbtiles_input)
-  self._con = sqlite3.connect(self.mbtiles_input)
-  self._cur = self._con.cursor()
-  sql = ' '.join(sql.split())
-  logger.debug(_("Execute query '%s' %s") % (sql, args))
-  try:
-   self._cur.execute(sql, *args)
-  except (sqlite3.OperationalError, sqlite3.DatabaseError), e:
-   raise InvalidFormatError(_("%s while reading %s") % (e, self.filename))
-  return self._cur
-
- def metadata(self,i_parm=0):
-  rows = self._query('SELECT name, value FROM metadata ORDER BY name  COLLATE NOCASE ASC')
-  rows = [(row[0], row[1]) for row in rows]
-  if i_parm == 1:
-   return rows
-  return dict(rows)
-
- def zoomlevels(self):
-  rows = self._query('SELECT DISTINCT(zoom_level) FROM tiles ORDER BY zoom_level')
-  return [int(row[0]) for row in rows]
-
- def tile(self, z, x, y):
-  logger.debug(_("MBTilesReader.Extract tile %s") % ((z, x, y),))
-  y_mercator = (2**int(z) - 1) - int(y)
-  rows = self._query('''SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
-  t = rows.fetchone()
-  if not t:
-   return None
-   pass
-   #   raise ExtractionError(_("Could not extract tile %s from %s") % ((z, x, y), self.filename))
-  return t[0]
-
- def grid(self, z, x, y, callback=None):
-  y_mercator = (2**int(z) - 1) - int(y)
-  rows = self._query('''SELECT grid FROM grids WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
-  t = rows.fetchone()
-  if not t:
-   raise ExtractionError(_("Could not extract grid %s from %s") % ((z, x, y), self.filename))
-  grid_json = json.loads(zlib.decompress(t[0]))
-  rows = self._query('''SELECT key_name, key_json FROM grid_data  WHERE zoom_level=? AND tile_column=? AND tile_row=?;''', (z, x, y_mercator))
-  # join up with the grid 'data' which is in pieces when stored in mbtiles file
-  grid_json['data'] = {}
-  grid_data = rows.fetchone()
-  while grid_data:
-   grid_json['data'][grid_data[0]] = json.loads(grid_data[1])
-   grid_data = rows.fetchone()
-   serialized = json.dumps(grid_json)
-   if callback is not None:
-    return '%s(%s);' % (callback, serialized)
-  return serialized
-
- def find_coverage(self, zoom):
-  """
-  Returns the bounding box (minx, miny, maxx, maxy) of an adjacent
-  group of tiles at this zoom level.
-  """
-  # Find a group of adjacent available tiles at this zoom level
-  rows = self._query('''SELECT tile_column, tile_row FROM tiles  WHERE zoom_level=? ORDER BY tile_column, tile_row;''', (zoom,))
-  t = rows.fetchone()
-  xmin, ymin = t
-  previous = t
-  while t and t[0] - previous[0] <= 1:
-   # adjacent, go on
-   previous = t
-   t = rows.fetchone()
-   xmax, ymax = previous
-   # Transform (xmin, ymin) (xmax, ymax) to pixels
-   tile_size = self.tilesize
-   bottomleft = (xmin * tile_size, (ymax + 1) * tile_size)
-   topright = ((xmax + 1) * tile_size, ymin * tile_size)
-   # Convert center to (lon, lat)
-   mercator = GlobalMercator(False,tile_size,[z])
-  return mercator.unproject_pixels(bottomleft, zoom) + mercator.unproject_pixels(topright, zoom)
-
-# from Landez project
-# https://github.com/makinacorpus/landez
 class MBTilesBuilder(TilesManager):
  def __init__(self, **kwargs):
   """
@@ -1008,11 +1058,6 @@ class MBTilesBuilder(TilesManager):
   self.nbtiles = 0
   self._bboxes = []
   self._metadata = []
-  self.metadata_list=None
-  self.s_y_type = 'tms'
-  self.tms_osm=False
-  self.mbtiles_format='jpg'
-  self.mbtiles_verbose=True
 
  def add_coverage(self, bbox, zoomlevels):
   """
@@ -1055,22 +1100,15 @@ class MBTilesBuilder(TilesManager):
     logger.info(_("%s already exists. Nothing to do.") % self.mbtiles_output)
     return
   extension = self.tile_format.split("image/")[-1]
-  self.mbtiles_input_dir=os.path.dirname(self.mbtiles_input)+ '/'
-  self.mbtiles_db_input=MbTiles()
-  self.mbtiles_db_input.open_db(self.mbtiles_input,self.mbtiles_input_dir,self.mbtiles_format,self.s_y_type,self.mbtiles_verbose)
-  self.metadata_input=self.mbtiles_db_input.fetch_metadata()
-  self.tms_osm=self.mbtiles_db_input.tms_osm
-  self.mbtiles_format=self.mbtiles_db_input.mbtiles_format
-  self.s_y_type=self.mbtiles_db_input.s_y_type
   if len(self._bboxes) == 0:
-   bbox = map(float, self.mbtiles_db_input.mbtiles_bounds.split(','))
-   zoomlevels = range(int(self.mbtiles_db_input.mbtiles_minzoom), int(self.mbtiles_db_input.mbtiles_maxzoom)+1)
+   bbox = map(float, self.reader.mbtiles_bounds.split(','))
+   zoomlevels = range(int(self.reader.mbtiles_minzoom), int(self.reader.mbtiles_maxzoom)+1)
    self.add_coverage(bbox=bbox, zoomlevels=zoomlevels)
   # Compute list of tiles
   tileslist = set()
   for bbox, levels in self._bboxes:
    logger.debug(_("MBTilesBuilder.run: Compute list of tiles for bbox %s on zooms %s.") % (bbox, levels))
-   bboxlist = self.tileslist(bbox, levels,self.tms_osm)
+   bboxlist = self.tileslist(bbox, levels,self.reader.tms_osm)
    logger.debug(_("Add %s tiles.") % len(bboxlist))
    tileslist = tileslist.union(bboxlist)
    logger.debug(_("MBTilesBuilder.run: %s tiles in total.") % len(tileslist))
@@ -1081,16 +1119,16 @@ class MBTilesBuilder(TilesManager):
   self.mbtiles_output=self.mbtiles_output.strip()
   self.mbtiles_output_dir=os.path.dirname(self.mbtiles_output)+ '/'
   self.mbtiles_db_output=MbTiles()
-  self.mbtiles_db_output.open_db(self.mbtiles_output,self.mbtiles_output_dir,self.mbtiles_format,self.s_y_type,self.mbtiles_verbose)
-  self.mbtiles_db_output.insert_metadata(self.metadata_input)
+  self.mbtiles_db_output.open_db(self.mbtiles_output,self.mbtiles_output_dir,self.reader.mbtiles_format,self.reader.s_y_type,self.reader.mbtiles_verbose)
+  if self.reader.metadata_input:
+   self.mbtiles_db_output.insert_metadata(self.reader.metadata_input)
   # Go through whole list of tiles and read from input_db and store in output_db
   self.rendered = 0
   # something is 'unsorting' this
   for (z, x, y) in sorted(tileslist,key=operator.itemgetter(0,1,2)):
-   image_data=self.mbtiles_db_input.retrieve_image(z,x,y)
+   image_data=self.tile((z,x,y))
    if not image_data is None:
     self.mbtiles_db_output.insert_image(z,x,y,image_data)
-  self.mbtiles_db_input.close_db()
   # calculate the min/max zoom_levels and bounds
   self.mbtiles_db_output.retrieve_bounds()
   logger.debug(_("MBTilesBuilder.run: %s tiles were missing.") % self.rendered)
@@ -1100,120 +1138,6 @@ class MBTilesBuilder(TilesManager):
    logger.debug(_("MBTilesBuilder.run: adding metadata %s .") % (metadata_list))
    self.mbtiles_db_output.insert_metadata(metadata_list[0])
   self.mbtiles_db_output.close_db()
-
- def run_orig(self, force=False):
-  """
-  Build a MBTile file.
-  force -- overwrite if MBTiles file already exists.
-  """
-  if os.path.exists(self.mbtiles_output):
-   if force:
-    logger.warn(_("%s already exists. Overwrite.") % self.mbtiles_output)
-    os.remove(self.mbtiles_output)
-   else:
-    # Already built, do not do anything.
-    logger.info(_("%s already exists. Nothing to do.") % self.mbtiles_output)
-    return
-  # Clean previous runs
-  self._clean_gather()
-  # If no coverage added, use bottom layer metadata
-  if len(self._layers) > 0:
-   bottomlayer = self._layers[0]
-   metadata = bottomlayer.reader.metadata()
-   if len(self._bboxes) == 0:
-    if 'bounds' in self.metadata:
-     logger.debug(_("Use bounds of bottom layer %s") % bottomlayer)
-     bbox = map(float, metadata.get('bounds', '').split(','))
-     zoomlevels = range(int(metadata.get('minzoom', 0)), int(metadata.get('maxzoom', 0)))
-     self.add_coverage(bbox=bbox, zoomlevels=zoomlevels)
-  # Compute list of tiles
-  tileslist = set()
-  for bbox, levels in self._bboxes:
-   logger.debug(_("MBTilesBuilder.run: Compute list of tiles for bbox %s on zooms %s.") % (bbox, levels))
-   bboxlist = self.tileslist(bbox, levels,self.tms_osm)
-   logger.debug(_("Add %s tiles.") % len(bboxlist))
-   tileslist = tileslist.union(bboxlist)
-   logger.debug(_("MBTilesBuilder.run: %s tiles in total.") % len(tileslist))
-  self.nbtiles = len(tileslist)
-  if not self.nbtiles:
-   raise EmptyCoverageError(_("No tiles are covered by bounding boxes : %s") % self._bboxes)
-   logger.debug(_("%s tiles to be packaged.") % self.nbtiles)
-  # Go through whole list of tiles and gather them in tmp_dir
-  self.rendered = 0
-  for (z, x, y) in sorted(tileslist,key=operator.itemgetter(0,1,2)):
-   self._gather((z, x, y))
-  logger.debug(_("MBTilesBuilder.run: %s tiles were missing.") % self.rendered)
-  self.metadata_list = self.get_metadata(1)
-  # Some metadata
-  middlezoom = self.zoomlevels[len(self.zoomlevels)/2]
-  lat = self.bounds[1] + (self.bounds[3] - self.bounds[1])/2
-  lon = self.bounds[0] + (self.bounds[2] - self.bounds[0])/2
-  metadata = {}
-  metadata['format'] = self._tile_extension[1:]
-  metadata['minzoom'] = self.zoomlevels[0]
-  metadata['maxzoom'] = self.zoomlevels[-1]
-  metadata['bounds'] = '%s,%s,%s,%s' % tuple(self.bounds)
-  metadata['center'] = '%s,%s,%s' % (lon, lat, middlezoom)
-  #display informations from the grids on hover
-  content_to_display = ''
-  for field_name in self.grid_fields:
-   content_to_display += "{{{ %s }}}<br>" % field_name
-  metadata['template'] = '{{#__location__}}{{/__location__}} {{#__teaser__}} \
-       %s {{/__teaser__}}{{#__full__}}{{/__full__}}' % content_to_display
-  metadatafile = os.path.join(self.tmp_dir, 'metadata.json')
-  with open(metadatafile, 'w') as output:
-   json.dump(metadata, output)
-  # TODO: add UTF-Grid of last layer, if any
-  # Package it!
-  logger.info(_("Build MBTiles file '%s'.") % self.mbtiles_output)
-  extension = self.tile_format.split("image/")[-1]
-  self.mbtiles_output=self.mbtiles_output.strip()
-  self.mbtiles_output_dir=os.path.dirname(self.mbtiles_output)+ '/'
-  self.mbtiles_format=extension
-  self.mbtiles_db_output=MbTiles()
-  self.mbtiles_db_output.open_db(self.mbtiles_output,self.mbtiles_output_dir,self.mbtiles_format,self.s_y_type,self.mbtiles_verbose)
-  self.mbtiles_db_output.insert_metadata(self.metadata_list)
-  self.mbtiles_db_output.mbtiles_from_disk(self.tmp_dir)
-  for metadata_list in self._metadata:
-   logger.debug(_("MBTilesBuilder.run: adding metadata %s .") % (metadata_list))
-   self.mbtiles_db_output.insert_metadata(metadata_list[0])
-  self.mbtiles_db_output.close_db()
-  try:
-   os.remove("%s-journal" % self.mbtiles_output)  # created by mbutil
-  except OSError, e:
-   pass
-  self._clean_gather()
-
- def _gather(self, (z, x, y)):
-  files_dir, tile_name = self.cache.tile_file((z, x, y))
-  tmp_dir = os.path.join(self.tmp_dir, files_dir)
-  if not os.path.isdir(tmp_dir):
-   os.makedirs(tmp_dir)
-  print "MBTilesBuilder._gather calling tile"
-  tilecontent = self.tile((z, x, y))
-  if tilecontent:
-   tilepath = os.path.join(tmp_dir, tile_name)
-   with open(tilepath, 'wb') as f:
-    f.write(tilecontent)
-   if len(self.grid_fields) > 0:
-    gridcontent = self.grid((z, x, y))
-    gridpath = "%s.%s" % (os.path.splitext(tilepath)[0], 'grid.json')
-    with open(gridpath, 'w') as f:
-     f.write(gridcontent)
-
- def _clean_gather(self):
-  logger.debug(_("Clean-up %s") % self.tmp_dir)
-  try:
-   shutil.rmtree(self.tmp_dir)
-   #Delete parent folder only if empty
-   try:
-    parent = os.path.dirname(self.tmp_dir)
-    os.rmdir(parent)
-    logger.debug(_("Clean-up parent %s") % parent)
-   except OSError:
-    pass
-  except OSError:
-   pass
 
 # from Landez project
 # https://github.com/makinacorpus/landez
@@ -1271,14 +1195,15 @@ class TileDownloader(TileSource):
   self.basename = parsed.netloc
   self.headers = headers or {}
 
- def tile(self, z, x, y):
+ def tile(self, z, x, y_tms):
   """
   Download the specified tile from `tiles_url`
   """
-  logger.debug(_("Download tile %s") % ((z, x, y),))
+  logger.debug(_("Download tile %s") % ((z, x, y_tms),))
   # Render each keyword in URL ({s}, {x}, {y}, {z}, {size} ... )
   size = self.tilesize
-  s = self.tiles_subdomains[(x + y) % len(self.tiles_subdomains)];
+  s = self.tiles_subdomains[(x + y_tms) % len(self.tiles_subdomains)];
+  y_osm = (2**int(z) - 1) - int(y_tms)
   try:
    url = self.tiles_url.format(**locals())
   except KeyError, e:
@@ -1291,9 +1216,9 @@ class TileDownloader(TileSource):
     request = urllib2.Request(url)
     for header, value in self.headers.items():
      request.add_header(header, value)
-     stream = urllib2.urlopen(request)
-     assert stream.getcode() == 200
-     return stream.read()
+    stream = urllib2.urlopen(request)
+    assert stream.getcode() == 200
+    return stream.read()
    except (AssertionError, IOError), e:
     logger.debug(_("Download error, retry (%s left). (%s)") % (r, e))
     r -= 1
@@ -1427,7 +1352,6 @@ class Cache(object):
 
  def tile_file(self, (z, x, y)):
   tile_dir = os.path.join("%s" % z, "%s" % x)
-  y_mercator = (2**z - 1) - y
   tile_name = "%s%s" % (y_mercator, self.extension)
   return tile_dir, tile_name
 
