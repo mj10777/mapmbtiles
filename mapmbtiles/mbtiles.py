@@ -1040,16 +1040,16 @@ class MBTilesBuilder(TilesManager):
   """
   return self._bboxes[0][0]  #TODO: merge all coverages
 
- def run(self, force=False):
+ def run(self, add=False):
   """
   Build a MBTile file.
   force -- overwrite if MBTiles file already exists.
   add -- TODO overwrite if MBTiles file already exists.
   """
   if os.path.exists(self.mbtiles_output):
-   if force:
-    logger.warn(_("%s already exists. Overwrite.") % self.mbtiles_output)
-    os.remove(self.mbtiles_output)
+   if add:
+    logger.warn(_("%s already exists. Will be added to.") % self.mbtiles_output)
+    # os.remove(self.mbtiles_output)
    else:
     # Already built, do not do anything.
     logger.info(_("%s already exists. Nothing to do.") % self.mbtiles_output)

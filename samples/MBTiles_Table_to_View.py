@@ -12,6 +12,8 @@ s_name="";
 Source_filepath="%slidarplots.mbtiles" % input_directory
 for i_loop in range(0,1):
  if i_loop == 0:
+  # this db was to big to include in GitHub
+  # remote: warning: File samples/source/lidarplots.mbtiles is 90.62 MB; this is larger than GitHub's recommended maximum file size of 50 MB
   Output_filepath="%slidarplots.mbtiles" % output_directory
  print  "Loop: ",i_loop,"\nSource: ",Source_filepath," \nOutput: ",Output_filepath   
  mb = MBTilesBuilder(mbtiles_input=Source_filepath, mbtiles_output=Output_filepath)
