@@ -13,10 +13,10 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
           * this source is newer than the source in the git-repository
        * to my knowlage the support for this project has been disscontinued in its Open-Source form.
 
-* some of the Mbtiles creation logic from the `Mapbox` project:
+* some of the Mbtiles creation logic came from the `Mapbox` project:
     *  the original project source can be found at [https://github.com/mapbox/mbutil]
 
-* some of the Mbtiles funtionality from the `Landez` project:
+* some of the Mbtiles funtionality came from the `Landez` project:
     *  the original project source can be found at [https://github.com/makinacorpus/landez]
  
 
