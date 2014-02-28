@@ -8,12 +8,12 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 
 * the 'Map Tile Cutter' is based on the original work of:
     *  Klokan Petr Pridal `klokan.petr.pridal@gmail.com`
-    *  the original project source can be found at `http://code.google.com/p/maptiler`
+    *  the original project source can be found at [http://code.google.com/p/maptiler]
        * the source code used here was taken from the `maptiler_1.0.beta2_all.deb`
        *  to my knowlage the support for this project has been disscontinued in its Open-Source form.
 
-* some of the Mbtiles creation logic was based on :
-    *  the original project source can be found at `https://github.com/mapbox/mbutil`
+* some of the Mbtiles creation logic from the `Mapbox` project :
+    *  the original project source can be found at [https://github.com/mapbox/mbutil]
 
 * some of the Mbtiles funtionality from the `Landez` project :
     *  the original project source can be found at `https://github.com/makinacorpus/landez`
