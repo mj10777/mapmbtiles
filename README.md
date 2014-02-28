@@ -15,7 +15,7 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 
 * some of the Mbtiles creation logic came from the `Mapbox` project:
     *  the original project source can be found at [https://github.com/mapbox/mbutil]
-       * much of this code howwever differs
+       * much of this code however differs
 
 * some of the Mbtiles funtionality came from the `Landez` project:
     *  the original project source can be found at [https://github.com/makinacorpus/landez]
@@ -39,8 +39,8 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 
 * When install on linux, a `soft-link`  called `gdal2mbtiles` will be created
     * this can be called with the same paramaters as `gdal2tiles.py`
-    * when called with `--mbtiles` the [output] parameter will be used as the file-name for mbtiles
-       * the extention `.mbtiles` should be used
+    * when called with `--mbtiles` the [output] parameter will be ignored
+       * in the directory as the image: a `image_name.mbtiles` will be created
        * the created tiles will then be stored in a mbtiles Database and NOT as a tile-directory
     * when called with `--mbtiles_from_disk` 
        * the [input_file] parameter will be used as the tile-directory
@@ -83,9 +83,14 @@ The `Landez` project also supports other functions, not yet tested:
 Installing under linux:
 
 * `deploy/linux/makedeb`
-   * will create the `.deb` file
+   * will create the `.deb` file and must be called after any code chnages
+      * a valid debian key is needed for this
 * `sudo dpkg -i mapmbtiles_1.0.beta2_all.deb`
    * will install the `.deb`
+
+* `rebuild_install.sh` is a bash script that rebuilds and installs everything
+   * calling both commands, checking the results
+      * a valid debian key is needed for this
 
 ***
 

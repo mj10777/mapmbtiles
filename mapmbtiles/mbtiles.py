@@ -158,11 +158,11 @@ class MbTiles(object):
   # self.optimize_connection()
   if not db_create:
    if self.verbose:
-    logger.info(_("MbTiles[%s] : [open_db] : creating: [%s]") % db_create,self.s_path_db)
+    logger.info(_("MbTiles : [open_db] : creating: [%s]") % self.s_path_db)
    self.mbtiles_create()
   else:
    if self.verbose:
-    logger.info(_("MbTiles[%s] : [open_db] : opening: [%s]") % db_create,self.s_path_db)
+    logger.info(_("MbTiles : [open_db] : opening: [%s]") % self.s_path_db)
    self.fetch_metadata()
 
  def close_db(self):
@@ -289,7 +289,7 @@ class MbTiles(object):
    self.s_y_type="tms"
   if not self.mbtiles_cursor:
    self.mbtiles_cursor = self.sqlite3_connection.cursor()
-  s_tile_id="{0}-{1}-{2}.{3}".format(str(tz), str(tx),str(ty),self.s_y_type)
+  s_tile_id="{0}-{1}-{2}.{3}".format(str(tz),str(tx),str(ty),self.s_y_type)
   s_tile_id,output_image=self.check_image(s_tile_id,image_data)
   if output_image:
    image_data=output_image
@@ -299,7 +299,7 @@ class MbTiles(object):
   image_values = [(s_tile_id,buffer(image_data))]
   # sqlite3.Binary(image_data)
   if self.verbose:
-   logger.info(_("MbTiles : insert_image: %d,%d,%d id[%s]") % tz,tx,ty,s_tile_id)
+   logger.info(_("MbTiles : insert_image: %d,%d,%d id[%s]") % (tz,tx,ty,s_tile_id))
   try:
    self.mbtiles_cursor.executemany(sql_insert_map,map_values)
    self.mbtiles_cursor.executemany(sql_insert_image,image_values)
