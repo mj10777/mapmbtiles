@@ -10,6 +10,7 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
     *  Klokan Petr Pridal `klokan.petr.pridal@gmail.com`
     *  the original project source can be found at [http://code.google.com/p/maptiler]
        * the source code used here was taken from the `maptiler_1.0.beta2_all.deb`
+          * this source is newer than the source in the git-repository
        * to my knowlage the support for this project has been disscontinued in its Open-Source form.
 
 * some of the Mbtiles creation logic from the `Mapbox` project:
