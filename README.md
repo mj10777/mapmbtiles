@@ -15,21 +15,24 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 
 * some of the Mbtiles creation logic came from the `Mapbox` project:
     *  the original project source can be found at [https://github.com/mapbox/mbutil]
+       * much of this code howwever differs
 
 * some of the Mbtiles funtionality came from the `Landez` project:
     *  the original project source can be found at [https://github.com/makinacorpus/landez]
+       * much of this code as been adaped to read/write directly to the mbtiles files
+          * beforhand it used a cache that was filled by another class
  
 
 ***
 
-* The main goal was to adapt the `gdal2tiles.py` to also support the creation of a mbtiles Database
+* The main goal was to adapt the `gdal2tiles.py` to also support the creation of a mbtiles Databases
     * `gdal2tiles.py` has been renamed to `gdal2mbtiles.py` to avoid conficts with the original gdal version
     * the basic functionality has otherwise not been changed
        * `tilemapresource.xml` : is now written correctly (x and y values were switched)
        * all of the y tiles are created first (each x directory is filled compleatly, before the next is created)
           * this makes it quicker to resume after an interuption
 
-* The created mbtiles Databases are base on the same logic used in the geopaparrazi project:
+* The created mbtiles Databases are based on the same logic used in the geopaparrazi project:
     * [https://github.com/geopaparazzi/geopaparazzi/wiki/mbtiles-Implementation]
     * it uses `tiles` as a view and not a table
     * it will check for `blank` images (all pixels have the same RGB value) and store this only once
