@@ -13,7 +13,7 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
        *  to my knowlage the support for this project has been disscontinued in its Open-Source form.
 
 * some of the Mbtiles creation logic was based on :
-    *  the original project source can be found at `https://github.com/mapbox/mbutil/blob/master/mbutil/util.py`
+    *  the original project source can be found at `https://github.com/mapbox/mbutil`
 
 * some of the Mbtiles funtionality from the `Landez` project :
     *  the original project source can be found at `https://github.com/makinacorpus/landez`
@@ -23,11 +23,11 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 
 * The main goal was to adapt the `gdal2tiles.py` to also support the creation of a mbtiles Database
     * the basic functionality has otherwise not been changed
-    * `gdal2tiles.py` has been renamed to `gdal2mbtiles.py` to avoud conficts with the original gdal version
+    * `gdal2tiles.py` has been renamed to `gdal2mbtiles.py` to avoid conficts with the original gdal version
 
 * The created mbtiles Databases are base on the same logic used in the geopaparrazi project:
     * [https://github.com/geopaparazzi/geopaparazzi/wiki/mbtiles-Implementation]
-    * it used `tiles` as a view and not a table
+    * it uses `tiles` as a view and not a table
     * it will check for `blank` images (all pixels have the same RGB value) and store this only onece
 
 * When install on linux, a 'soft-link'  called 'gdal2mbtiles' will be created
@@ -46,7 +46,7 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 
 ***
 
-In the `samples` directory, there are some python scripts thatuse this project when installed
+In the `samples` directory, there are some python scripts that use this project when installed
 
 * they are based on the functionality taken from the `Landez` project
    * importing all or a portion of one mbtiles to another
@@ -56,7 +56,7 @@ In the `samples` directory, there are some python scripts thatuse this project w
    * exporting all or a portion of one mbtiles to a image
       * when `tif` is used, the result will be a geotif
 
-The `Landez` project also supports other function, not yet tested:
+The `Landez` project also supports other functions, not yet tested:
 
 * `Blend tiles together`
 * `Merge multiple sources of tiles (URL, WMS, MBTiles, Mapnik stylesheet) together.`
