@@ -28,9 +28,9 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 * The created mbtiles Databases are base on the same logic used in the geopaparrazi project:
     * [https://github.com/geopaparazzi/geopaparazzi/wiki/mbtiles-Implementation]
     * it uses `tiles` as a view and not a table
-    * it will check for `blank` images (all pixels have the same RGB value) and store this only onece
+    * it will check for `blank` images (all pixels have the same RGB value) and store this only once
 
-* When install on linux, a 'soft-link'  called 'gdal2mbtiles' will be created
+* When install on linux, a `soft-link`  called `gdal2mbtiles` will be created
     * this can be called with the same paramaters as `gdal2tiles.py`
     * when called with `--mbtiles` the [output] parameter will be used as the file-name for mbtiles
        * the extention `.mbtiles` should be used
