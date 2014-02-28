@@ -15,22 +15,22 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 * some of the Mbtiles creation logic was based on :
     *  the original project source can be found at `https://github.com/mapbox/mbutil/blob/master/mbutil/util.py`
 
-* some of the Mbtiles funtionality :
+* some of the Mbtiles funtionality from the `Landez` project :
     *  the original project source can be found at `https://github.com/makinacorpus/landez`
  
 
 ***
 
-The main goal was to adapt the `gdal2tiles.py` to also support the creation of a mbtiles Database
+* The main goal was to adapt the `gdal2tiles.py` to also support the creation of a mbtiles Database
     * the basic functionality has otherwise not been changed
     * `gdal2tiles.py` has been renamed to `gdal2mbtiles.py` to avoud conficts with the original gdal version
 
-The created mbtiles Databases are base on the same logic used in the geopaparrazi project:
+* The created mbtiles Databases are base on the same logic used in the geopaparrazi project:
     * [https://github.com/geopaparazzi/geopaparazzi/wiki/mbtiles-Implementation]
     * it used `tiles` as a view and not a table
     * it will check for `blank` images (all pixels have the same RGB value) and store this only onece
 
-When install on linux, a 'soft-link'  called 'gdal2mbtiles' will be created
+* When install on linux, a 'soft-link'  called 'gdal2mbtiles' will be created
     * this can be called with the same paramaters as `gdal2tiles.py`
     * when called with `--mbtiles` the [output] parameter will be used as the file-name for mbtiles
        * the extention `.mbtiles` should be used
@@ -47,6 +47,7 @@ When install on linux, a 'soft-link'  called 'gdal2mbtiles' will be created
 ***
 
 In the `samples` directory, there are some python scripts thatuse this project when installed
+
 * they are based on the functionality taken from the `Landez` project
    * importing all or a portion of one mbtiles to another
       * this can be used to `convert` a table based mbtiles to a `view` base mbtiles
@@ -56,6 +57,7 @@ In the `samples` directory, there are some python scripts thatuse this project w
       * when `tif` is used, the result will be a geotif
 
 The `Landez` project also supports other function, not yet tested:
+
 * `Blend tiles together`
 * `Merge multiple sources of tiles (URL, WMS, MBTiles, Mapnik stylesheet) together.`
 * `Composite a WMS layer with OpenStreetMap using transparency`
