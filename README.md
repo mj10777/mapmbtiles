@@ -6,24 +6,27 @@ Map MbTiles / Tile  Generator (Based on MapTiler 2009 version)
 
 ***
 
-* the 'Map Tile Cutter' is based on the original work of:
+* the `Map Tile Cutter` is based on the original work of:
     *  Klokan Petr Pridal `klokan.petr.pridal@gmail.com`
     *  the original project source can be found at [http://code.google.com/p/maptiler]
        * the source code used here was taken from the `maptiler_1.0.beta2_all.deb`
-       *  to my knowlage the support for this project has been disscontinued in its Open-Source form.
+       * to my knowlage the support for this project has been disscontinued in its Open-Source form.
 
-* some of the Mbtiles creation logic from the `Mapbox` project :
+* some of the Mbtiles creation logic from the `Mapbox` project:
     *  the original project source can be found at [https://github.com/mapbox/mbutil]
 
-* some of the Mbtiles funtionality from the `Landez` project :
-    *  the original project source can be found at `https://github.com/makinacorpus/landez`
+* some of the Mbtiles funtionality from the `Landez` project:
+    *  the original project source can be found at [https://github.com/makinacorpus/landez]
  
 
 ***
 
 * The main goal was to adapt the `gdal2tiles.py` to also support the creation of a mbtiles Database
-    * the basic functionality has otherwise not been changed
     * `gdal2tiles.py` has been renamed to `gdal2mbtiles.py` to avoid conficts with the original gdal version
+    * the basic functionality has otherwise not been changed
+       * `tilemapresource.xml` : is now written correctly (x and y values were switched)
+       * all of the y tiles are created first (each x directory is filled compleatly, before the next is created)
+          * this makes it quicker to resume after an interuption
 
 * The created mbtiles Databases are base on the same logic used in the geopaparrazi project:
     * [https://github.com/geopaparazzi/geopaparazzi/wiki/mbtiles-Implementation]
@@ -56,6 +59,12 @@ In the `samples` directory, there are some python scripts that use this project 
    * exporting all or a portion of one mbtiles to a image
       * when `tif` is used, the result will be a geotif
 
+A sample mbtiles Database has been included, which some of the samples use
+
+* due to size limitations, other mbtiles files cannot be included in this project
+   * where used in the sample sripts, a link has been supplided where this file can be downloaded:
+      * [http://www.mj10777.de/public/download/mbtiles/]
+
 The `Landez` project also supports other functions, not yet tested:
 
 * `Blend tiles together`
@@ -76,8 +85,8 @@ Installing under linux:
 
 ***
 
-The original 'Map Tile Cutter' project also had routines for installing under `macosx` and `win32`
-* these have remain unchanged and may or may not work
+The original `Map Tile Cutter` project also had routines for installing under `macosx` and `win32`
+* these have remained unchanged and may or may not work
 
 ---
 
