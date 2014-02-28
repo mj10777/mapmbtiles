@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# - coding: utf-8 -*-
 #******************************************************************************
 #  $Id: mbtiles.py 15748 2008-11-17 16:30:54Z Mark Johnson $
 #
@@ -37,8 +38,7 @@
 #  DEALINGS IN THE SOFTWARE.
 #******************************************************************************
 
-from osgeo import gdal
-from osgeo import osr
+from osgeo import gdal,osr
 
 import collections
 import json
@@ -47,11 +47,13 @@ import mimetypes
 import math
 import operator
 import os
+from pkg_resources import parse_version
 import re
 import shutil
 import sqlite3
 import sys
 import tempfile
+import urllib
 import urllib2
 from urlparse import urlparse
 from gettext import gettext as _
@@ -86,7 +88,7 @@ DEFAULT_MBTILES_OUTPUT = os.path.join(os.getcwd(), "mbtiles_output.mbtiles")
 """ Default tile size in pixels (*useless* in remote rendering) """
 DEFAULT_TILE_SIZE = 256
 """ Default tile format (mime-type) """
-DEFAULT_TILE_FORMAT = 'image/jpg'
+DEFAULT_TILE_FORMAT = 'image/jpeg'
 """ Number of retries for remove tiles downloading """
 DOWNLOAD_RETRIES = 10
 """ Path to fonts for Mapnik rendering """
@@ -120,6 +122,7 @@ class MbTiles(object):
   self.s_y_type = 'tms'
   self.tms_osm=False
   self.mbtiles_format='jpg'
+  self.jpg_quality=75
   self.pil_format='JPEG'
   self.mbtiles_minzoom='0'
   self.mbtiles_maxzoom='22'
@@ -136,6 +139,10 @@ class MbTiles(object):
   if s_y_type == "osm":
    self.s_y_type=s_y_type
    self.tms_osm=True
+  if mbtiles_format.find("image/") == -1:
+   mbtiles_format.replace("image/ ","")
+  if mbtiles_format == "jpeg":
+   mbtiles_format="jpg"
   if mbtiles_format == "png":
    self.mbtiles_format=mbtiles_format
    self.pil_format='PNG'
@@ -251,6 +258,8 @@ class MbTiles(object):
     # logger.info(_("MbTiles : insert_metadata:: [%s]") % metadata_list)
     pass
    try:
+    # ERROR:mapmbtiles.mbtiles:MbTiles : insert_metadata: Error You must not use 8-bit bytestrings unless you use a text_factory that can interpret 8-bit bytestrings (like text_factory = str). It is highly recommended that you instead just switch your application to Unicode strings.:
+    # repr(metadata_list)
     self.mbtiles_cursor.executemany("INSERT OR REPLACE INTO metadata VALUES(?,?)",metadata_list)
     self.sqlite3_connection.commit()
    except sqlite3.Error, e:
@@ -309,7 +318,7 @@ class MbTiles(object):
     if input_image.mode != "RGB":
      input_image=input_image.convert('RGB')
     # http://effbot.org/imagingbook/pil-index.htm#appendixes
-    input_image.save(s_tile_id, format="JPEG", quality=75, optimize=True, progressive=False)
+    input_image.save(s_tile_id, format="JPEG", quality=self.jpg_quality, optimize=True, progressive=False)
    else:
     input_image.save(s_tile_id, format="PNG",optimize=True)
    f = open(s_tile_id,'rb')
@@ -923,6 +932,7 @@ class TilesManager(object):
     self.tile_format = mimetype
     logger.info(_("Tile format set to %s") % self.tile_format)
    self.reader = TileDownloader(self.tiles_url, headers=self.tiles_headers,subdomains=self.tiles_subdomains, tilesize=self.tile_size)
+   self.reader.mbtiles_format=self.tile_format
   # Tile files extensions
   self._tile_extension = mimetypes.guess_extension(self.tile_format, strict=False)
   assert self._tile_extension, _("Unknown format %s") % self.tile_format
@@ -1030,13 +1040,13 @@ class TilesManager(object):
   """
   Tile binary content as PIL Image.
   """
-  image = Image.open(StringIO(data))
+  image = Image.open(BytesIO(data))
   return image.convert('RGBA')
 
  def _image_tile(self, image):
-  out = StringIO()
-  image.save(out, self._tile_extension[1:])
-  return out.getvalue()
+  out_image = BytesIO()
+  image.save(out_image, self._tile_extension[1:])
+  return out_image.getvalue()
 
 # from Landez project
 # https://github.com/makinacorpus/landez
@@ -1085,11 +1095,11 @@ class MBTilesBuilder(TilesManager):
   """
   return self._bboxes[0][0]  #TODO: merge all coverages
 
- def run(self, add=False):
+ def run(self, add=False, i_parm=0):
   """
   Build a MBTile file.
-  force -- overwrite if MBTiles file already exists.
-  add -- TODO overwrite if MBTiles file already exists.
+  add -- add if MBTiles file already exists.
+  i_parm -- 1 : show info only
   """
   if os.path.exists(self.mbtiles_output):
    if add:
@@ -1099,7 +1109,6 @@ class MBTilesBuilder(TilesManager):
     # Already built, do not do anything.
     logger.info(_("%s already exists. Nothing to do.") % self.mbtiles_output)
     return
-  extension = self.tile_format.split("image/")[-1]
   if len(self._bboxes) == 0:
    bbox = map(float, self.reader.mbtiles_bounds.split(','))
    zoomlevels = range(int(self.reader.mbtiles_minzoom), int(self.reader.mbtiles_maxzoom)+1)
@@ -1108,14 +1117,17 @@ class MBTilesBuilder(TilesManager):
   tileslist = set()
   for bbox, levels in self._bboxes:
    logger.debug(_("MBTilesBuilder.run: Compute list of tiles for bbox %s on zooms %s.") % (bbox, levels))
-   bboxlist = self.tileslist(bbox, levels,self.reader.tms_osm)
+   bboxlist,tile_bounds = self.tileslist(bbox, levels,self.reader.tms_osm)
    logger.debug(_("Add %s tiles.") % len(bboxlist))
    tileslist = tileslist.union(bboxlist)
    logger.debug(_("MBTilesBuilder.run: %s tiles in total.") % len(tileslist))
   self.nbtiles = len(tileslist)
   if not self.nbtiles:
    raise EmptyCoverageError(_("No tiles are covered by bounding boxes : %s") % self._bboxes)
-   logger.debug(_("%s tiles to be packaged.") % self.nbtiles)
+  if i_parm == 1:
+   logger.info(_("-I-> Computed list of [%d] tiles for bbox %s on zooms %s.") % (self.nbtiles,bbox, levels))
+   logger.info(_("-I-> MBTilesBuilder.run: i_parm[%d] ; set i_parm=0 to run ; will now exit.") % i_parm)
+   return
   self.mbtiles_output=self.mbtiles_output.strip()
   self.mbtiles_output_dir=os.path.dirname(self.mbtiles_output)+ '/'
   self.mbtiles_db_output=MbTiles()
@@ -1141,35 +1153,89 @@ class MBTilesBuilder(TilesManager):
 
 # from Landez project
 # https://github.com/makinacorpus/landez
+# http://effbot.org/imagingbook/pil-index.htm#appendixes
 class ImageExporter(TilesManager):
  def __init__(self, **kwargs):
   """
   Arrange the tiles and join them together to build a single big image.
+  Sample Image: 1861_Mercator_Europe zoom_level 8
+  - given       bbox: -8.0,36.0,80.0,77.0
+  - calulated bbox: -8.4375, 35.46066995149529, 80.15625, 77.157162522661
+  Image Size is 16128, 15872 ; Pixel Size = (0.005493164062500,-0.002627047163002)
+  Origin = (-8.437500000000000,77.157162522660997)
+  PNG:    370   MB
+  TIF : 1.000   MB [NONE]
+  TIF : 1.000   MB [PACKBITS]  - took 1 minute to create
+  TIF :   404.7 MB [DEFLATE,PREDICTOR=2,ZLEVEL=8] - took 13 minutes to create
+  TIF :   404.7 MB [DEFLATE,PREDICTOR=2,ZLEVEL=9] - took 13 minutes to create
+  TIF :   472.5 MB [LZW,PREDICTOR=2] - took 1 minute to create [default if nothing is supplid]
+  TIF :   735.8 MB [LZW,PREDICTOR=1] - took 1 minute to create
   """
   super(ImageExporter, self).__init__(**kwargs)
+  # COMPRESS=PACKBITS
+  # PIL: TIFF uncompressed, or Packbits, LZW, or JPEG compressed images. In the current version, PIL always writes uncompressed TIFF files
+  # http://linfiniti.com/2011/05/gdal-efficiency-of-various-compression-algorithms/
+  # predictor for 'DEFLATE' or 'LZW' : 1 or 2
+  i_tiff_compression_predictor=2
+  # zlevel for 'DEFLATE'  : 1 to 9
+  i_tiff_compression_zlevel=8
+  self.jpg_quality=75
+  self.tiff_compression=[]
+  self._metadata = []
+  if self.reader.metadata_input:
+   self.metadata_input=self.reader.metadata_input
+  self.tiff_compress = kwargs.get('tiff_compression', "LZW")
+  self.tiff_compress =self.tiff_compress.upper()
+  self.jpg_quality = kwargs.get('jpg_quality', self.jpg_quality)
+  if self.jpg_quality < 1 or self.jpg_quality > 95:
+   self.jpg_quality=75
+  i_tiff_compression_predictor = kwargs.get('tiff_predictor', i_tiff_compression_predictor)
+  if i_tiff_compression_predictor < 1 or i_tiff_compression_predictor > 2:
+   i_tiff_compression_predictor=2
+  i_tiff_compression_zlevel = kwargs.get('tiff_zlevel', i_tiff_compression_zlevel)
+  if i_tiff_compression_zlevel < 1 or i_tiff_compression_zlevel > 9:
+   i_tiff_compression_predictor=8
+  if self.tiff_compress == "PACKBITS" :
+   self.tiff_compression.append('COMPRESS=PACKBITS')
+  elif self.tiff_compress == "DEFLATE":
+   self.tiff_compression.append('COMPRESS=%s' % 'DEFLATE')
+   self.tiff_compression.append('PREDICTOR=%d' % i_tiff_compression_predictor)
+   self.tiff_compression.append('ZLEVEL=%d' % i_tiff_compression_zlevel)
+  elif self.tiff_compress == "LZW":
+   self.tiff_compression.append('COMPRESS=%s' % 'LZW')
+   self.tiff_compression.append('PREDICTOR=%d' % i_tiff_compression_predictor)
+  elif self.tiff_compress == "NONE":
+   self.tiff_compression.append('COMPRESS=NONE')
+
+ def add_metadata(self, metdatadata_list):
+  """
+  Add metadata to be included in the resulting mbtiles file.
+  """
+  self._metadata.append((metdatadata_list, ))
 
  def grid_tiles(self, bbox, zoomlevel):
   """
   Return a grid of (x, y) tuples representing the juxtaposition
   of tiles on the specified ``bbox`` at the specified ``zoomlevel``.
   """
-  tiles = self.tileslist(bbox, [zoomlevel])
+  tiles,tile_bounds = self.tileslist(bbox, [zoomlevel],self.reader.tms_osm)
   grid = {}
-  for (z, x, y) in sorted(tiles,key=operator.itemgetter(0,1,2)):
+  # for (z, x, y) in sorted(tiles,key=operator.itemgetter(0,1,2),reverse=True):
+  for (z, x, y) in tiles:
    if not grid.get(y):
     grid[y] = []
-    grid[y].append(x)
-    sortedgrid = []
-    for y in sorted(grid.keys()):
-     sortedgrid.append([(x, y) for x in sorted(grid[y])])
-  return sortedgrid
+   grid[y].append(x)
+  sortedgrid = []
+  for y in sorted(grid.keys(),reverse=not self.reader.tms_osm):
+   sortedgrid.append([(x, y) for x in sorted(grid[y])])
+  return sortedgrid,tile_bounds
 
  def export_image(self, bbox, zoomlevel, imagepath):
   """
   Writes to ``imagepath`` the tiles for the specified bounding box and zoomlevel.
   """
   assert has_pil, _("Cannot export image without python PIL")
-  grid = self.grid_tiles(bbox, zoomlevel)
+  grid,tile_bounds = self.grid_tiles(bbox, zoomlevel)
   width = len(grid[0])
   height = len(grid)
   widthpix = width * self.tile_size
@@ -1181,8 +1247,126 @@ class ImageExporter(TilesManager):
      offset = (j * self.tile_size, i * self.tile_size)
      img = self._tile_image(self.tile((zoomlevel, x, y)))
      result.paste(img, offset)
-  logger.info(_("Save resulting image to '%s'") % imagepath)
-  result.save(imagepath)
+  if imagepath.endswith(".tif") or imagepath.endswith(".tiff"):
+   # http://effbot.org/imagingbook/pil-index.htm#appendixes
+   # Packbits, LZW, or JPEG
+   # In the current version, PIL always writes uncompressed TIFF files.
+   image_gdal="gdal_input.tif"
+   result.save(image_gdal, format="TIFF", compression="JPEG")
+   self.geotif_image(tile_bounds,(widthpix,heightpix),imagepath,image_gdal)
+  else:
+   if imagepath.endswith(".jpg") or imagepath.endswith(".jpeg"):
+    # IOError: encoder error -2 when writing image file
+    result.save(imagepath, format="JPEG", quality=int(self.jpg_quality), optimize=True, progressive=False)
+   elif  imagepath.endswith(".png") :
+    result.save(imagepath, format="PNG",optimize=True)
+   else:
+    result.save(imagepath)
+   logger.info(_("-I-> export_image: Save resulting image to '%s' - bounds[%s]") % (imagepath,tile_bounds))
+
+ def geotif_image(self, tile_bounds, image_bounds, imagepath,image_gdal):
+  """
+  Writes to ``imagepath`` the tiles for the specified bounding box and zoomlevel.
+  """
+  i_srid=3857
+  s_srid="WGS 84 / Pseudo-Mercator"
+  # i_srid=3395
+  # s_srid="WGS 84 / World Mercator"
+  # 4326 Wsg84
+  # Upper Left  (  -8.4375000,  77.1571625) (  8d26'15.00"W, 77d 9'25.79"N)
+  # Lower Left  (  -8.4375000,  35.4606700) (  8d26'15.00"W, 35d27'38.41"N)
+  # Upper Right (  80.1562500,  77.1571625) ( 80d 9'22.50"E, 77d 9'25.79"N)
+  # Lower Right (  80.1562500,  35.4606700) ( 80d 9'22.50"E, 35d27'38.41"N)
+  # Center      (  35.8593750,  56.3089162) ( 35d51'33.75"E, 56d18'32.10"N)
+  # 3857 'WGS 84 / Pseudo-Mercator'
+  # Upper Left  ( -939258.204,13932330.020) (  8d26'15.00"W, 77d 9'25.79"N)
+  # Lower Left  ( -939258.204, 4226661.916) (  8d26'15.00"W, 35d27'38.41"N)
+  # Upper Right ( 8922952.934,13932330.020) ( 80d 9'22.50"E, 77d 9'25.79"N)
+  # Lower Right ( 8922952.934, 4226661.916) ( 80d 9'22.50"E, 35d27'38.41"N)
+  # Center      ( 3991847.365, 9079495.968) ( 35d51'33.75"E, 62d54'54.84"N)
+  # 3395 'WGS 84 / World Mercator'
+  # Upper Left  ( -939258.204,13932330.020) (  8d26'15.00"W, 77d14'24.81"N)
+  # Lower Left  ( -939258.204, 4226661.916) (  8d26'15.00"W, 35d38'33.56"N)
+  # Upper Right ( 8922952.934,13932330.020) ( 80d 9'22.50"E, 77d14'24.81"N)
+  # Lower Right ( 8922952.934, 4226661.916) ( 80d 9'22.50"E, 35d38'33.56"N)
+  # Center      ( 3991847.365, 9079495.968) ( 35d51'33.75"E, 63d 4'14.87"N)
+  bounds_west,bounds_south,bounds_east,bounds_north=tile_bounds
+  bounds_wsg84="bounds_wsg84: %f,%f,%f,%f"% (bounds_west,bounds_south,bounds_east,bounds_north)
+  mercator = GlobalMercator()
+  tile_bounds=mercator.BoundsToMeters(tile_bounds)
+  mbtiles_name="";
+  mbtiles_description=""
+  s_TIFFTAG_DOCUMENTNAME=""
+  s_TIFFTAG_IMAGEDESCRIPTION=""
+  s_TIFFTAG_SOFTWARE=""
+  s_TIFFTAG_DATETIME=""
+  s_TIFFTAG_ARTIST=""
+  s_TIFFTAG_HOSTCOMPUTER=""
+  s_TIFFTAG_COPYRIGHT=""
+  if self.metadata_input:
+   metadata=dict(self.metadata_input)
+   mbtiles_name=metadata.get('name','')
+   mbtiles_description=metadata.get('description','')
+  if self._metadata:
+   for metadata_list in self._metadata:
+    metadata=dict(metadata_list[0])
+    mbtiles_name=metadata.get('name',mbtiles_name)
+    mbtiles_description=metadata.get('description',mbtiles_description)
+    s_TIFFTAG_DOCUMENTNAME=metadata.get('TIFFTAG_DOCUMENTNAME',mbtiles_name)
+    s_TIFFTAG_IMAGEDESCRIPTION=metadata.get('TIFFTAG_IMAGEDESCRIPTION',mbtiles_description)
+    s_TIFFTAG_SOFTWARE=metadata.get('TIFFTAG_SOFTWARE','')
+    s_TIFFTAG_DATETIME=metadata.get('TIFFTAG_DATETIME','')
+    s_TIFFTAG_ARTIST=metadata.get('TIFFTAG_ARTIST','')
+    s_TIFFTAG_HOSTCOMPUTER=metadata.get('TIFFTAG_HOSTCOMPUTER','')
+    s_TIFFTAG_COPYRIGHT=metadata.get('TIFFTAG_COPYRIGHT','')
+  if s_TIFFTAG_DOCUMENTNAME == "":
+   s_TIFFTAG_DOCUMENTNAME=mbtiles_name
+  if s_TIFFTAG_IMAGEDESCRIPTION == "":
+   s_TIFFTAG_IMAGEDESCRIPTION=mbtiles_description
+  tiff_metadata=[]
+  if s_TIFFTAG_DOCUMENTNAME != "":
+   tiff_metadata.append(('TIFFTAG_DOCUMENTNAME',s_TIFFTAG_DOCUMENTNAME))
+  if s_TIFFTAG_IMAGEDESCRIPTION != "":
+   tiff_metadata.append(('TIFFTAG_IMAGEDESCRIPTION',s_TIFFTAG_IMAGEDESCRIPTION))
+  if s_TIFFTAG_SOFTWARE != "":
+   tiff_metadata.append(('TIFFTAG_SOFTWARE',s_TIFFTAG_SOFTWARE))
+  else:
+   tiff_metadata.append(('TIFFTAG_SOFTWARE',bounds_wsg84))
+  if s_TIFFTAG_DATETIME != "":
+   tiff_metadata.append(('TIFFTAG_DATETIME',s_TIFFTAG_DATETIME))
+  if s_TIFFTAG_ARTIST != "":
+   tiff_metadata.append(('TIFFTAG_ARTIST',s_TIFFTAG_ARTIST))
+  if s_TIFFTAG_HOSTCOMPUTER != "":
+   tiff_metadata.append(('TIFFTAG_HOSTCOMPUTER',s_TIFFTAG_HOSTCOMPUTER))
+  if s_TIFFTAG_COPYRIGHT != "":
+   tiff_metadata.append(('TIFFTAG_COPYRIGHT',s_TIFFTAG_COPYRIGHT))
+  # this assumes the projection is Geographic lat/lon WGS 84
+  xmin,ymin,xmax,ymax=tile_bounds
+  image_width,image_height=image_bounds
+  # Upper Left  (   20800.000,   22000.000)
+  # Lower Right (   24000.000,   19600.000)
+  # Size is 15118, 11339
+  # (24000-20800)/15118 = 3200 = 0,21166821 [xres]
+  # (19600-22000)/11339 = 2400 =  −0,211658876 [yres]
+  # geo_transform = (20800.0, 0.2116682100807, 0.0, 22000.0, 0.0, -0.21165887644413)
+  geo_transform = [xmin, (xmax-xmin)/image_width, 0, ymax, 0, (ymin-ymax)/image_height ]
+  spatial_projection = osr.SpatialReference()
+  spatial_projection.ImportFromEPSG(i_srid)
+  logger.info(_("-I-> geotif_image: Saveing as GeoTiff - image[%s] compression[%s]") % (imagepath,self.tiff_compression))
+  image_dataset = gdal.Open(image_gdal, gdal.GA_Update )
+  image_dataset.SetProjection(spatial_projection.ExportToWkt())
+  image_dataset.SetGeoTransform(geo_transform)
+  driver = gdal.GetDriverByName("GTiff")
+  output_dataset = driver.CreateCopy(imagepath,image_dataset, 0, self.tiff_compression )
+  if tiff_metadata:
+   logger.info(_("-I-> geotif_image: tiff_metadata[%s]") % tiff_metadata)
+   output_dataset.SetMetadata(dict(tiff_metadata))
+  # Once we're done, close properly the dataset
+  output_dataset = None
+  image_dataset = None
+  os.remove(image_gdal)
+  logger.info(_("-I-> geotif_image: Saved resulting image to '%s' as GeoTiff- bounds[%s]") % (imagepath,tile_bounds))
+
 
 # from Landez project
 # https://github.com/makinacorpus/landez
@@ -1250,13 +1434,14 @@ class WMSReader(TileSource):
   projectionKey = 'srs'
   if parse_version(self.wmsParams['version']) >= parse_version('1.3'):
    projectionKey = 'crs'
-  self.wmsParams[projectionKey] = GlobalMercator.NAME
+  self.wmsParams[projectionKey] = GlobalMercator.WSG84
 
- def tile(self, z, x, y):
-  logger.debug(_("Request WMS tile %s") % ((z, x, y),))
-  mercator = GlobalMercator(False,tile_size,[z])
-  bbox = mercator.tile_bbox((z, x, y))
-  bbox = mercator.project(bbox[:2]) + mercator.project(bbox[2:])
+ def tile(self, z, x, y_tms):
+  logger.debug(_("Request WMS tile %s") % ((z, x, y_tms),))
+  y_osm = (2**int(z) - 1) - int(y_tms)
+  mercator = GlobalMercator(True,self.tilesize,[z])
+  bbox = mercator.tile_bbox((z, x, y_osm))
+  # bbox = mercator.project(bbox[:2]) + mercator.project(bbox[2:])
   bbox = ','.join(map(str, bbox))
   # Build WMS request URL
   encodedparams = urllib.urlencode(self.wmsParams)
@@ -1268,7 +1453,10 @@ class WMSReader(TileSource):
    header = f.info().typeheader
    assert header == self.wmsParams['format'], "Invalid WMS response type : %s" % header
    return f.read()
-  except (AssertionError, IOError):
+  except (AssertionError, IOError),e:
+   # BBOX parameter's minimum Y is greater than the maximum Y
+   # srs is not permitted: EPSG:3857
+   logger.error(_("WMS request URL: Error %s:") % e.args[0])
    raise ExtractionError
 
 # from Landez project
@@ -1352,7 +1540,7 @@ class Cache(object):
 
  def tile_file(self, (z, x, y)):
   tile_dir = os.path.join("%s" % z, "%s" % x)
-  tile_name = "%s%s" % (y_mercator, self.extension)
+  tile_name = "%s%s" % (y, self.extension)
   return tile_dir, tile_name
 
  def read(self, (z, x, y)):

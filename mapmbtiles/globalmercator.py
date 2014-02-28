@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 #******************************************************************************
 #  $Id: mbtiles.py 15748 2008-11-17 16:30:54Z Mark Johnson $
 #
@@ -40,6 +41,10 @@
 
 import math
 import operator
+import logging
+from gettext import gettext as _
+
+logger = logging.getLogger(__name__)
 
 MAXZOOMLEVEL = 32
 DEG_TO_RAD = math.pi/180
@@ -154,7 +159,8 @@ class GlobalMercator(object):
               AUTHORITY["EPSG","9001"]]]
  """
 
- NAME = 'EPSG:3857'
+ WSG84 = 'EPSG:4326'
+ Spherical_Mercator  = 'EPSG:3857'
 
  def __init__(self, tms_osm=False,tileSize=256,levels = [0]):
   "Initialize the TMS Global Mercator pyramid"
@@ -173,6 +179,13 @@ class GlobalMercator(object):
   my = math.log( math.tan((90 + lat) * math.pi / 360.0 )) / (math.pi / 180.0)
   my = my * self.originShift / 180.0
   return mx, my
+
+ def BoundsToMeters(self, tile_bounds ):
+  "Converts given lat/lon Bounds in WGS84 Datum to XY in Spherical Mercator EPSG:900913 / 3857 / 3395"
+  xmin,ymin,xmax,ymax=tile_bounds
+  xmin,ymin=self.LatLonToMeters(ymin,xmin)
+  xmax,ymax=self.LatLonToMeters(ymax,xmax)
+  return (xmin,ymin,xmax,ymax)
 
  def MetersToLatLon(self, mx, my ):
   "Converts XY point from Spherical Mercator EPSG:900913 to lat/lon in WGS84 Datum"
@@ -306,15 +319,15 @@ class GlobalMercator(object):
 
  # from Landez project
  # https://github.com/makinacorpus/landez
- def tile_bbox(self, (z, x, y)):
+ def tile_bbox(self, (z, x, y_tms)):
   """
-  Returns the WGS84 bbox of the specified tile
+  Returns the WGS84 bbox of the specified tile [tms notation] west/north/east/south
   """
-  topleft = (x * self.tileSize, (y + 1) * self.tileSize)
-  bottomright = ((x + 1) * self.tileSize, y * self.tileSize)
-  nw = self.unproject_pixels(topleft, z)
-  se = self.unproject_pixels(bottomright, z)
-  return nw + se
+  topleft = (x * self.tileSize, (y_tms + 1) * self.tileSize)
+  bottomright = ((x + 1) * self.tileSize, y_tms * self.tileSize)
+  wn = self.unproject_pixels(topleft, z)
+  es = self.unproject_pixels(bottomright, z)
+  return wn + es
 
  # from Landez project
  # https://github.com/makinacorpus/landez
@@ -335,11 +348,12 @@ class GlobalMercator(object):
   Returns the coordinates from position in meters
   """
   lng = x/EARTH_RADIUS * RAD_TO_DEG
-  lat = 2 * math.atan(exp(y/EARTH_RADIUS)) - pi/2 * RAD_TO_DEG
+  lat = 2 * math.atan(math.exp(y/EARTH_RADIUS)) - math.pi/2 * RAD_TO_DEG
   return (lng, lat)
 
  # from Landez project
  # https://github.com/makinacorpus/landez
+ # this return list from north to south and west to east and precise bounds
  def tileslist(self, bbox):
   if not self.levels:
    raise InvalidCoverageError(_("Wrong zoom levels. [init_levels called?]"))
@@ -347,9 +361,23 @@ class GlobalMercator(object):
    raise InvalidCoverageError(_("Wrong format of bounding box."))
   xmin, ymin, xmax, ymax = bbox
   if abs(xmin) > 180 or abs(xmax) > 180 or abs(ymin) > 90 or abs(ymax) > 90:
-   raise InvalidCoverageError(_("Some coordinates exceed [-180,+180], [-90, 90]."))
+   s_error="";
+   if abs(xmin) > 180:
+    s_error+="abs(xmin) (%d) > 180 ; " % abs(xmin)
+   if abs(xmax) > 180:
+    s_error+="abs(xmax) (%d) > 180 ; " % abs(xmax)
+   if abs(ymin) > 90:
+    s_error+="abs(ymin) (%d) > 90 ; " % abs(ymin)
+   if abs(ymax) > 90:
+    s_error+="abs(ymax) (%d) > 90 ; " % abs(ymax)
+   raise InvalidCoverageError(_("-E-> Some coordinates exceed [-180,+180], [-90, 90]. [%s]" % (s_error)))
   if xmin >= xmax or ymin >= ymax:
-   raise InvalidCoverageError(_("Bounding box format is (xmin, ymin, xmax, ymax)"))
+   s_error="";
+   if xmin >= xmax:
+    s_error+="xmin(%f) >= xmax(%f) ; " % (xmin,xmax)
+   if ymin >= ymax:
+    s_error+="ymin(%f) >= ymax(%f) ; " % (ymin,ymax)
+   raise InvalidCoverageError(_("-E-> Bounding box format is (xmin, ymin, xmax, ymax) [%s]" % (s_error)))
   ll0 = (xmin, ymax)  # left top
   ll1 = (xmax, ymin)  # right bottom
   l = []
@@ -365,9 +393,19 @@ class GlobalMercator(object):
      if not self.tms_osm:
       # return tms numbering
       y = ((2**z-1) - y)
+     lng_min,lat_max,lng_max, lat_min=self.tile_bbox((z,x,y))
+     # logger.info(_("Save resulting image xy'%s' - bounds[%s]") % ((x,y),(lng_min,lat_max,lng_max, lat_min)))
+     if lng_max > xmax:
+      xmax=lng_max
+     if lng_min < xmin:
+      xmin=lng_min
+     if lat_max > ymax:
+      ymax=lat_max
+     if lat_min < ymin:
+      ymin=lat_min
      l.append((z, x, y))
-  # print "tilelist[",sorted(l,key=operator.itemgetter(0,1,2)),"] "
-  return sorted(l,key=operator.itemgetter(0,1,2))
+  tile_bounds=(xmin,ymin,xmax,ymax)
+  return (l,tile_bounds)
 
  # from Landez project
  # https://github.com/makinacorpus/landez

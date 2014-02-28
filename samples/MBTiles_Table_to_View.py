@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import logging
 from mapmbtiles import MBTilesBuilder
 # .bashrc
 # export PYTHONPATH=/usr/lib/mapmbtiles:$PYTHONPATH
-    
+
 logging.basicConfig(level=logging.DEBUG)
 input_directory="source"
 output_directory="output"
@@ -16,7 +17,7 @@ for i_loop in range(0,1):
   # remote: warning: File samples/source/lidarplots.mbtiles is 90.62 MB; this is larger than GitHub's recommended maximum file size of 50 MB
   # 'wget http://www.mj10777.de/public/download/mbtiles/test_mbtiles/lidarplots.mbtiles -o source/lidarplots.mbtiles
   Output_filepath="%s/lidarplots.mbtiles" % output_directory
- print  "Loop: ",i_loop,"\nSource: ",Source_filepath," \nOutput: ",Output_filepath   
+ print  "Loop: ",i_loop,"\nSource: ",Source_filepath," \nOutput: ",Output_filepath
  mb = MBTilesBuilder(mbtiles_input=Source_filepath, mbtiles_output=Output_filepath)
  # lidarplots.mbtiles db used 'tiles' as a table and not a view
  # - the result will be created with 'tiles' as a view with 'map' and 'images' as a table
